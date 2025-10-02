@@ -16,7 +16,9 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, "troubleshoot_v2.db") 
 ALLOWED_DOMAIN = "@vmis.com.br"
 ADMIN_EMAIL = "maicon.ferreira@vmis.com.br"
-SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "sua_chave_secreta_muito_forte_12345") 
+SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "sua_chave_secreta_muito_forte_12345")
+
+
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
