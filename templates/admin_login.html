@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Login de Administrador{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-center align-items-center" style="min-height: calc(100vh - 56px);">
+    <div class="auth-container border-danger" style="border: 1px solid var(--red-500); box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);">
+        
+        <div class="auth-header" style="color: var(--red-500);">
+            <i class="fa-solid fa-user-shield fa-2x mb-2"></i>
+            <h4>Acesso Restrito</h4>
+            <p class="small" style="color: var(--text-secondary);">Apenas administradores podem acessar esta área.</p>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="mb-3">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert" style="color: black !important;">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('admin_login') }}">
+            <div class="mb-3">
+                <label for="email" class="form-label">E-mail Administrativo</label>
+                <input type="email" class="form-control" id="email" name="email" placeholder="admin@vmis.com.br" required>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Senha</label>
+                <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+            
+            <div class="d-grid gap-2 mt-4">
+                <button type="submit" class="btn btn-admin">
+                    ENTRAR COMO ADMIN
+                </button>
+            </div>
+        </form>
+       
+        <p class="text-center mt-3 small" style="color: var(--text-secondary);">
+            <i class="fa-solid fa-lock me-1"></i> Área protegida.
+        </p>
+        <p class="text-center mt-2 small">
+            <a href="{{ url_for('login') }}" class="text-secondary small">Voltar ao Login Comum</a>
+        </p>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const alerts = document.querySelectorAll('.alert.show');
+
+        alerts.forEach(function(alert) {
+            setTimeout(function() {
+                // Usa a API do Bootstrap 5 para fechar o alerta
+                const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+                bsAlert.close();
+            }, 3000); // 3 segundos
+        });
+    });
+</script>
+    </div>
+</div>
+{% endblock %}

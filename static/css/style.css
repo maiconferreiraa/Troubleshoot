@@ -1,0 +1,70 @@
+body {
+    background: #000;
+    color: darkorange;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+.login-container, form {
+    margin: 20px auto;
+    padding: 20px;
+    max-width: 500px;
+    background: #111;
+    border: 1px solid darkorange;
+    border-radius: 5px;
+}
+
+input, select, textarea, button {
+    display: block;
+    margin: 8px 0;
+    width: 100%;
+    padding: 6px;
+    background: #222;
+    border: 1px solid darkorange;
+    color: darkorange;
+}
+
+button, a {
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    margin: 5px 2px;
+}
+
+a {
+    color: darkorange;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th, td {
+    border: 1px solid darkorange;
+    padding: 5px;
+    text-align: left;
+}
+
+tr:hover {
+    background-color: darkorange;
+    color: black;
+}
+
+.flashes {
+    list-style-type: none;
+    padding: 0;
+}
+.success { color: #0f0; }
+.warning { color: #ff0; }
+.danger { color: #f00; }
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+}
+.header .logo { height: 80px; }

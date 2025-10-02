@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Troubleshoot System{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <style>
+        :root {
+            --yellow-500: #ffc107; 
+            --yellow-700: #bf9105; 
+            --red-500: #dc3545; /* Usado para ADMIN */
+            --bg-body: #000;
+            --bg-dark-1: #111; 
+            --bg-dark-2: #222; 
+            --text-light: var(--yellow-500);
+            --text-secondary: #AAA;
+            --text-white: #FFF;
+        }
+
+        body {
+            background-color: var(--bg-body); 
+            color: var(--text-white);
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding-top: 56px; /* Altura do navbar */
+        }
+        
+        /* Estilos comuns para Auth (Login/Register/Reset) */
+        .auth-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 30px;
+            background-color: var(--bg-dark-1);
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.2);
+            border: 1px solid var(--yellow-700);
+        }
+        
+        .auth-header {
+            text-align: center;
+            margin-bottom: 25px;
+            color: var(--text-light);
+        }
+
+        /* Estilo para inputs no tema escuro */
+        .form-control, .form-select {
+            background-color: var(--bg-dark-2) !important;
+            color: var(--text-light) !important;
+            border: 1px solid var(--yellow-700) !important;
+            border-radius: 4px !important;
+        }
+        
+        .form-control::placeholder {
+            color: var(--text-secondary) !important;
+            opacity: 0.7;
+        }
+        .form-label {
+            color: var(--text-light) !important;
+        }
+
+        .form-control:focus, .form-select:focus {
+            box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, .4);
+            border-color: var(--yellow-500) !important;
+            background-color: var(--bg-dark-2) !important;
+        }
+
+        /* Botão principal de login (amarelo) */
+        .btn-login {
+            background-color: var(--yellow-700);
+            color: white;
+            border: none;
+            padding: 10px 0;
+            font-weight: bold;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .btn-login:hover {
+            background-color: var(--yellow-500);
+            color: black;
+        }
+        
+        /* Botão admin (vermelho) */
+        .btn-admin {
+            background-color: var(--red-500);
+            color: white;
+            border: none;
+            padding: 10px 0;
+            font-weight: bold;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .btn-admin:hover {
+            background-color: #c9303c;
+            color: white;
+        }
+
+        /* Estilo para as mensagens flash */
+        .alert {
+            color: black !important;
+        }
+        
+        /* Estilos para o Dashboard */
+        .header-content {
+            color: var(--yellow-500);
+            border-bottom: 1px solid var(--yellow-700);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .card-dark {
+            background-color: var(--bg-dark-1);
+            border: 1px solid var(--yellow-700);
+            color: var(--text-white);
+        }
+
+        .table-dark {
+            --bs-table-bg: var(--bg-dark-1);
+            --bs-table-striped-bg: var(--bg-dark-2);
+            --bs-table-striped-color: var(--text-white);
+            --bs-table-color: var(--text-white);
+            --bs-table-border-color: var(--yellow-700);
+        }
+        
+        .table-dark thead th {
+            color: var(--yellow-500);
+            border-color: var(--yellow-500);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR (Compartilhado por dashboard e outras páginas internas) -->
+    {% if 'user' in session %}
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top" style="background-color: #0d0d0d; border-bottom: 1px solid var(--yellow-700);">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}" style="color: var(--yellow-500);">
+                <i class="fa-solid fa-screwdriver-wrench me-2"></i> Troubleshooting
+            </a>
+            <div class="d-flex">
+                <span class="navbar-text me-3 small d-none d-md-inline" style="color: var(--text-secondary);">
+                    Logado como: 
+                    <span style="color: var(--text-white);">
+                        {{ session['user'] }} 
+                        {% if session.get('is_admin') %}
+                            <span class="badge bg-danger ms-2"><i class="fa-solid fa-crown me-1"></i> ADMINISTRADOR</span>
+                        {% endif %}
+                    </span>
+                </span>
+                <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-danger">Sair</a>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <div class="container mt-5">
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="row">
+                    <div class="col-md-8 offset-md-2 mt-3">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- CONTEÚDO ESPECÍFICO DA PÁGINA VAI AQUI -->
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Script para fechar alertas automaticamente (compartilhado)
+        document.addEventListener('DOMContentLoaded', function () {
+            const alerts = document.querySelectorAll('.alert.show');
+    
+            alerts.forEach(function(alert) {
+                setTimeout(function() {
+                    if (bootstrap.Alert.getInstance(alert)) {
+                        bootstrap.Alert.getInstance(alert).close();
+                    }
+                }, 3000); // 3segundos para fechar
+            });
+        });
+    </script>
+</body>
+</html>

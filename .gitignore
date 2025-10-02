@@ -1,0 +1,14 @@
+# Ignora arquivos de banco de dados
+*.db
+
+# Ignora pastas de ambiente virtual (se você usa 'venv' ou 'env')
+venv/
+env/
+
+# Ignora caches do Python
+__pycache__/
+*.pyc
+
+# Ignora arquivos de IDEs
+.vscode/
+.idea/
