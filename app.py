@@ -8,17 +8,14 @@ from fpdf import FPDF
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-import logging # Importa o módulo de log
+import logging  # Importa o módulo de log
 
 # --- Configuração da Aplicação ---
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-# Mantemos o nome do DB alterado para garantir um arquivo novo no Render, caso ele use o SQLite
-DB_PATH = os.path.join(BASE_DIR, "troubleshoot_v2.db") 
+DB_PATH = os.path.join(BASE_DIR, "troubleshoot_v2.db")
 ALLOWED_DOMAIN = "@vmis.com.br"
 ADMIN_EMAIL = "maicon.ferreira@vmis.com.br"
 SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "sua_chave_secreta_muito_forte_12345")
-
-
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
@@ -26,112 +23,103 @@ app.config["DB_PATH"] = DB_PATH
 app.config["ALLOWED_DOMAIN"] = ALLOWED_DOMAIN
 app.config["ADMIN_EMAIL"] = ADMIN_EMAIL
 
-# Configuração de Log para garantir que o Render exiba as mensagens
+# Configuração de Log
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
 app.logger.addHandler(handler)
 app.logger.setLevel(logging.INFO)
 
-
 SERVICOS = [
-    "IMAGESERVICE", "DETECTORAPI", "CALIBRATIONAPI", "FILEMANAGERAPI",
-    "MCBCOMMUNICATIONAPI", "DETECTORCOMMUNICATION", "USERAPI", "SETTINGSAPI",
-    "PERIPHERALSAPI", "CONVEYORBELTAPI", "REPORTAPI", "INSPECTIONAPI",
-    "GENERATORAPI", "RABBTIMQ", "LOGSTASH", "MONGO-EXPRESS"
+    "IMAGESERVICE", "DETECTORAPI", "CALIBRATIONAPI", "FILEMANAGERAPI",
+    "MCBCOMMUNICATIONAPI", "DETECTORCOMMUNICATION", "USERAPI", "SETTINGSAPI",
+    "PERIPHERALSAPI", "CONVEYORBELTAPI", "REPORTAPI", "INSPECTIONAPI",
+    "GENERATORAPI", "RABBTIMQ", "LOGSTASH", "MONGO-EXPRESS"
 ]
 
 
-# --- Banco de Dados: Funções e Context Manager ---
-
+# --- Banco de Dados ---
 def get_db_connection():
-    """Retorna uma conexão SQLite e configura o row_factory para usar sqlite3.Row."""
-    conn = sqlite3.connect(app.config["DB_PATH"])
-    conn.row_factory = sqlite3.Row
-    return conn
+    conn = sqlite3.connect(app.config["DB_PATH"])
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def init_db():
-    """Inicializa o banco de dados e cria as tabelas 'erros', 'users' e 'tokens'."""
-    try:
-        with get_db_connection() as conn:
-            cur = conn.cursor()
-            # 1. Tabela de Erros
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS erros (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    erro TEXT NOT NULL,
-                    servico TEXT NOT NULL,
-                    solucao TEXT NOT NULL
-                )
-            """)
-            # 2. Tabela de Usuários (UNIQUE constraint aqui é o problema)
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    email TEXT UNIQUE NOT NULL,
-                    password_hash TEXT NOT NULL
-                )
-            """)
-            # 3. Tabela de Tokens de Redefinição de Senha
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS password_reset_tokens (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_email TEXT NOT NULL,
-                    token TEXT UNIQUE NOT NULL,
-                    expiration_time INTEGER NOT NULL 
-                )
-            """)
-            conn.commit()
-        app.logger.info("Banco de dados inicializado com sucesso.")
-    except sqlite3.Error as e:
-        app.logger.error(f"Erro ao inicializar o DB: {e}")
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS erros (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    erro TEXT NOT NULL,
+                    servico TEXT NOT NULL,
+                    solucao TEXT NOT NULL
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_email TEXT NOT NULL,
+                    token TEXT UNIQUE NOT NULL,
+                    expiration_time INTEGER NOT NULL
+                )
+            """)
+            conn.commit()
+        app.logger.info("Banco de dados inicializado com sucesso.")
+    except sqlite3.Error as e:
+        app.logger.error(f"Erro ao inicializar o DB: {e}")
 
-# --- Funções CRUD de Erros (Mantidas) ---
+
+# --- CRUD de Erros ---
 def fetch_all_erros():
-    """Busca todos os erros cadastrados."""
-    try:
-        with get_db_connection() as conn:
-            cur = conn.cursor()
-            cur.execute("SELECT id, erro, servico, solucao FROM erros ORDER BY id DESC")
-            return cur.fetchall()
-    except sqlite3.Error as e:
-        app.logger.error(f"Erro ao buscar erros: {e}")
-        return []
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT id, erro, servico, solucao FROM erros ORDER BY id DESC")
+            return cur.fetchall()
+    except sqlite3.Error as e:
+        app.logger.error(f"Erro ao buscar erros: {e}")
+        return []
 
 def insert_erro(erro, servico, solucao):
-    """Insere um novo erro no banco de dados."""
-    try:
-        with get_db_connection() as conn:
-            cur = conn.cursor()
-            cur.execute("INSERT INTO erros (erro, servico, solucao) VALUES (?, ?, ?)", (erro, servico, solucao))
-            conn.commit()
-            return True
-    except sqlite3.Error as e:
-        app.logger.error(f"Erro ao inserir erro: {e}")
-        return False
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("INSERT INTO erros (erro, servico, solucao) VALUES (?, ?, ?)", (erro, servico, solucao))
+            conn.commit()
+            return True
+    except sqlite3.Error as e:
+        app.logger.error(f"Erro ao inserir erro: {e}")
+        return False
 
 def update_erro(id_, erro, servico, solucao):
-    """Atualiza um erro existente no banco de dados."""
-    try:
-        with get_db_connection() as conn:
-            cur = conn.cursor()
-            cur.execute("UPDATE erros SET erro=?, servico=?, solucao=? WHERE id=?", (erro, servico, solucao, id_))
-            conn.commit()
-            return cur.rowcount > 0
-    except sqlite3.Error as e:
-        app.logger.error(f"Erro ao atualizar erro: {e}")
-        return False
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE erros SET erro=?, servico=?, solucao=? WHERE id=?", (erro, servico, solucao, id_))
+            conn.commit()
+            return cur.rowcount > 0
+    except sqlite3.Error as e:
+        app.logger.error(f"Erro ao atualizar erro: {e}")
+        return False
 
 def delete_erro(id_):
-    """Deleta um erro do banco de dados pelo ID."""
-    try:
-        with get_db_connection() as conn:
-            cur = conn.cursor()
-            cur.execute("DELETE FROM erros WHERE id=?", (id_,))
-            conn.commit()
-            return cur.rowcount > 0
-    except sqlite3.Error as e:
-        app.logger.error(f"Erro ao deletar erro: {e}")
-        return False
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM erros WHERE id=?", (id_,))
+            conn.commit()
+            return cur.rowcount > 0
+    except sqlite3.Error as e:
+        app.logger.error(f"Erro ao deletar erro: {e}")
+        return False
+
 
 
 # --- Funções CRUD de Usuários e Tokens ---
