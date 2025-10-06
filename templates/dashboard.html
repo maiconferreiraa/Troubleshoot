@@ -427,6 +427,25 @@
             rows.forEach(row => {
                 const text = row.textContent.toLowerCase();
                 row.style.display = text.includes(filter) ? '' : 'none';
+                });
+        });
+
+                // NOVO: Script para fechar mensagens flash automaticamente
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                // Fechar após 3000 milissegundos (3 segundos)
+                setTimeout(() => {
+                    const bootstrapAlert = bootstrap.Alert.getInstance(alert);
+                    if (bootstrapAlert) {
+                        bootstrapAlert.close();
+                    } else {
+                        // Se a instância não existir, crie uma e feche.
+                        // Isso pode acontecer se o alerta for adicionado dinamicamente ou for o primeiro a ser processado.
+                        const newAlert = new bootstrap.Alert(alert);
+                        newAlert.close();
+                    }
+                }, 3000); 
             });
         });
     </script>
