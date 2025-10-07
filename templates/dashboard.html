@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - Troubleshoot</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <style>
+        :root {
+            --yellow-500: #ffc107; 
+            --yellow-700: #bf9105; 
+            --bg-body: #0a0a0a;
+            --bg-dark-1: #111; 
+            --bg-dark-2: #222; 
+            --text-light: #e7e1e1; 
+            --text-secondary: #e7e1e1;
+            --border-color: #333;
+        }
+
+        html, body {
+            height: 100vh;
+            margin: 0;
+            /* Remover overflow-y: hidden; para permitir rolagem geral da página em telas pequenas se necessário */
+            /* overflow-y: hidden; */ 
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-secondary);
+        }
+
+        .navbar {
+            background-color: var(--bg-dark-1) !important;
+            border-bottom: 1px solid var(--yellow-700);
+            flex-shrink: 0; 
+        }
+
+        .navbar-brand {
+             color: var(--yellow-500) !important; 
+             font-weight: bold;
+             font-size: 1.5rem;
+             display: flex;
+             align-items: center;
+        }
+        
+        .navbar-logo {
+            height: 45px;
+            width: auto;
+            margin-right: 10px;
+        }
+
+        /* Ajuste para logo em telas menores */
+        @media (max-width: 575.98px) { /* Extra small devices (portrait phones) */
+            .navbar-logo {
+                height: 35px; /* Reduz o tamanho da logo */
+                margin-right: 5px;
+            }
+            .navbar-brand {
+                font-size: 1.2rem; /* Reduz o tamanho da fonte */
+            }
+            .navbar-text {
+                display: none; /* Esconde o "Olá, usuário" em telas muito pequenas, se necessário */
+            }
+        }
+
+
+        .form-control, .form-select {
+            background-color: var(--bg-dark-2) !important;
+            color: var(--text-secondary) !important;
+            border-color: var(--border-color) !important;
+        }
+        .form-control:focus, .form-select:focus {
+            box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, .4);
+            border-color: var(--yellow-500) !important;
+        }
+
+        .form-control::placeholder { 
+            color: #888 !important; 
+            opacity: 1; 
+        }
+
+        label, .form-label {
+            color: var(--text-secondary) !important;
+        }
+
+        .card {
+            background-color: var(--bg-dark-1);
+            border: 1px solid var(--border-color);
+        }
+
+        .table {
+            --bs-table-bg: var(--bg-dark-1);
+            --bs-table-striped-bg: var(--bg-dark-2);
+            --bs-table-color: var(--text-light);
+            --bs-table-border-color: var(--border-color);
+        }
+
+        .table thead th {
+            color: var(--yellow-500);
+            border-bottom: 1px solid var(--yellow-700);
+        }
+
+        .table tbody td {
+            color: var(--text-light);
+            /* Quebrar texto automaticamente nas células */
+            word-wrap: break-word;
+            min-width: 80px; /* Garante uma largura mínima para as colunas */
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: var(--bg-dark-2) !important;
+            color: var(--text-light) !important;
+        }
+        
+        .table-responsive-scroll {
+            /* Max-height ajustada para melhor responsividade */
+            max-height: calc(100vh - 350px); /* Ajuste este valor conforme necessário */
+            overflow-y: auto;
+            display: block;
+        }
+        /* Ajuste a max-height para telas menores */
+        @media (max-width: 767.98px) { /* Small devices (tablets, 768px and up) */
+            .table-responsive-scroll {
+                max-height: calc(100vh - 450px); /* Mais espaço para o formulário */
+            }
+        }
+
+
+        .table-responsive-scroll thead {
+            position: sticky;
+            top: 0;
+            background-color: var(--bg-dark-1);
+            z-index: 2;
+        }
+
+        .modal-content {
+            background-color: var(--bg-dark-1);
+            border: 1px solid var(--yellow-700);
+        }
+
+        .modal-header, .modal-footer {
+            border-bottom: 1px solid var(--border-color);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .text-light {
+            color: var(--yellow-500) !important;
+        }
+
+        /* Estilo para os grupos de botões na tabela em telas pequenas */
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap; /* Permite que os botões quebrem para a próxima linha */
+            gap: 5px; /* Espaçamento entre os botões */
+            justify-content: center; /* Centraliza os botões */
+        }
+        .action-buttons .btn {
+            flex-basis: auto; /* Permite que os botões se ajustem ao conteúdo */
+            min-width: 40px; /* Garante que os botões não fiquem muito pequenos */
+        }
+        /* Ajuste para o texto "Olá, Usuário" em telas pequenas */
+        @media (max-width: 767.98px) {
+            .navbar-text {
+                display: none; /* Oculta o texto para economizar espaço */
+            }
+        }
+    </style>
+</head>
+<body class="d-flex flex-column">
+
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" class="navbar-logo" alt="Logo VMIS">
+                VMIS Troubleshoot
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+                <div class="d-flex flex-column flex-lg-row align-items-center gap-3 mt-3 mt-lg-0">
+                    <span class="navbar-text me-lg-3">
+                        Olá, {{ user.split('@')[0] }}
+                    </span>
+
+                    <button type="button" class="btn btn-outline-warning w-100 w-lg-auto" data-bs-toggle="modal" data-bs-target="#sobreModal">
+                        Sobre
+                    </button>
+
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline-warning w-100 w-lg-auto">Sair</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container d-flex flex-column flex-grow-1 pb-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flex-shrink-0">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="card mb-4 flex-shrink-0">
+            <div class="card-header text-light">
+                <h5><i class="bi bi-plus-circle-fill"></i> Cadastrar Novo Erro</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('dashboard') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="action" value="cadastrar">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="erro" class="form-label">Descrição do Erro</label>
+                            <input type="text" class="form-control" name="erro" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                             <label for="servico" class="form-label">Serviço Afetado</label>
+                            <select class="form-select" name="servico" required>
+                                <option value="" selected disabled>-- Selecione um serviço --</option>
+                                {% for serv in servicos %}
+                                <option value="{{ serv }}">{{ serv }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="solucao" class="form-label">Solução</label>
+                        <textarea class="form-control" name="solucao" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="anexo" class="form-label">Anexar Imagem (PNG, JPG, JPEG, GIF)</label>
+                        <input class="form-control" type="file" id="anexo" name="anexo" accept="image/png, image/jpeg, image/gif">
+                        <small class="form-text text-muted">Tamanho máximo: 16MB</small>
+                    </div>
+                   <div class="d-flex gap-2 flex-wrap">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-plus-circle" style="margin-right: 4px;"></i> Cadastrar
+                        </button>
+                        <button type="reset" class="btn btn-secondary">Limpar</button>
+                   </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card flex-grow-1 d-flex flex-column">
+           <div class="card-header flex-shrink-0">
+                <div class="d-flex flex-wrap justify-content-between align-items-center">
+                    <h5 class="text-light mb-2 mb-md-0"><i class="bi bi-list-ul"></i> Erros Cadastrados</h5>
+                    <div class="flex-grow-1 mx-md-3 mb-2 mb-md-0" style="max-width: 400px;">
+                        <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Pesquisar Erro, Serviço, Solução ou Criador...">
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mt-2 mt-md-0">
+                        <a href="{{ url_for('export_csv') }}" class="btn btn-sm btn-outline-light"><i class="bi bi-file-earmark-spreadsheet"></i> Exportar CSV</a>
+                        <a href="{{ url_for('export_pdf') }}" class="btn btn-sm btn-outline-light"><i class="bi bi-file-earmark-pdf"></i> Exportar PDF</a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0 flex-grow-1 d-flex flex-column" style="min-height: 0;">
+                <div class="table-responsive table-responsive-scroll"> <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 5%;">ID</th>
+                                <th style="width: 15%;">Erro</th> 
+                                <th style="width: 15%;">Serviço</th>
+                                <th style="width: 20%;"> Possível Solução</th> 
+                                <th style="width: 15%;">Criado por</th>
+                                <th style="width: 30%;">Ações</th> </tr>
+                        </thead>
+                        <tbody>
+                            {% for erro in erros %}
+                            <tr>
+                                <td>{{ erro.id }}</td>
+                                <td>{{ erro.erro }}</td>
+                                <td>{{ erro.servico }}</td>
+                                <td style="white-space: pre-wrap;">{{ erro.solucao }}</td>
+                                <td>{{ erro.criado_por.split('@')[0] }}</td>
+                                <td>
+                                    <div class="action-buttons"> <button class="btn btn-sm btn-outline-info viewBtn" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#viewModal"
+                                                data-id="{{ erro.id }}"
+                                                data-erro="{{ erro.erro }}"
+                                                data-servico="{{ erro.servico }}"
+                                                data-solucao="{{ erro.solucao }}"
+                                                data-criado-por="{{ erro.criado_por }}"
+                                                data-anexo-path="{{ erro.anexo_path if erro.anexo_path else '' }}">
+                                            <i class="bi bi-eye-fill"></i>
+                                        </button>
+                                        
+                                        {% if erro.anexo_path %}
+                                        <a href="{{ url_for('uploaded_file', filename=erro.anexo_path) }}" 
+                                           target="_blank" class="btn btn-sm btn-outline-success" 
+                                           title="Ver Anexo">
+                                            <i class="bi bi-paperclip"></i>
+                                        </a>
+                                        {% endif %}
+
+                                        <button class="btn btn-sm btn-outline-warning editBtn" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#editModal"
+                                                data-id="{{ erro.id }}"
+                                                data-erro="{{ erro.erro }}"
+                                                data-servico="{{ erro.servico }}"
+                                                data-solucao="{{ erro.solucao }}"
+                                                data-anexo-path="{{ erro.anexo_path if erro.anexo_path else '' }}">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        
+                                        <button class="btn btn-sm btn-outline-danger deleteBtn" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#deleteModal"
+                                                data-id="{{ erro.id }}">
+                                            <i class="bi bi-trash-fill"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center">Nenhum erro cadastrado.</td> </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal fade" id="editModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-light">Editar Erro</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{{ url_for('dashboard') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="action" value="alterar">
+                    <input type="hidden" name="id" id="edit-id">
+                    <div class="modal-body">
+                         <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="edit-erro" class="form-label">Descrição do Erro</label>
+                                <input type="text" id="edit-erro" name="erro" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="edit-servico" class="form-label">Serviço Afetado</label>
+                                <select id="edit-servico" name="servico" class="form-select" required>
+                                    <option value="" disabled>-- Selecione um serviço --</option>
+                                    {% for serv in servicos %}
+                                    <option value="{{ serv }}">{{ serv }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-solucao" class="form-label">Solução</label>
+                            <textarea id="edit-solucao" name="solucao" rows="4" class="form-control" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-anexo" class="form-label">Novo Anexo (opcional, substitui o anterior)</label>
+                            <input class="form-control" type="file" id="edit-anexo" name="anexo" accept="image/png, image/jpeg, image/gif">
+                            <small class="form-text text-muted">Tamanho máximo: 16MB. Deixe em branco para manter o anexo atual.</small>
+                            <div id="current-anexo-info" class="mt-2" style="display:none;">
+                                Anexo atual: <a id="current-anexo-link" href="#" target="_blank"></a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-warning">Salvar Alterações</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="viewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-light">Detalhes do Erro</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <dl class="row">
+                        <dt class="col-sm-3">ID</dt>
+                        <dd class="col-sm-9" id="view-id"></dd>
+
+                        <dt class="col-sm-3">Erro</dt>
+                        <dd class="col-sm-9" id="view-erro"></dd>
+
+                        <dt class="col-sm-3">Serviço</dt>
+                        <dd class="col-sm-9" id="view-servico"></dd>
+
+                        <dt class="col-sm-3">Solução</dt>
+                        <dd class="col-sm-9" id="view-solucao" style="white-space: pre-wrap;"></dd>
+
+                        <dt class="col-sm-3">Criado por</dt>
+                        <dd class="col-sm-9" id="view-criado-por"></dd>
+
+                        <dt class="col-sm-3">Anexo</dt>
+                        <dd class="col-sm-9">
+                            <span id="view-anexo-status">Nenhum anexo.</span>
+                            <a id="view-anexo-link" href="#" target="_blank" class="ms-2" style="display:none;">Ver Anexo</a>
+                            <img id="view-anexo-img" src="#" alt="Anexo do Erro" class="img-fluid mt-2" style="display:none; max-width: 100%; height: auto;">
+                        </dd>
+                    </dl>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <form method="POST" action="{{ url_for('dashboard') }}">
+                <input type="hidden" name="action" value="apagar">
+                <input type="hidden" name="id" id="delete-id">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title text-light">Confirmar Exclusão</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Tem certeza que deseja excluir este erro?</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-danger">Excluir</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="sobreModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-light">Sobre o Sistema</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-light">
+                    <p>Este sistema foi desenvolvido para auxiliar no cadastro e consulta de erros e soluções relacionados aos serviços da VMIS.</p>
+                    <p>Versão: 1.0.0</p>
+                    <p>Desenvolvedor: Sua Equipe de TI</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-warning" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Popula modal editar
+        const editModal = document.getElementById('editModal');
+        editModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            const id = button.getAttribute('data-id');
+            const erro = button.getAttribute('data-erro');
+            const servico = button.getAttribute('data-servico');
+            const solucao = button.getAttribute('data-solucao');
+            const anexoPath = button.getAttribute('data-anexo-path'); 
+
+            document.getElementById('edit-id').value = id;
+            document.getElementById('edit-erro').value = erro;
+            document.getElementById('edit-servico').value = servico;
+            document.getElementById('edit-solucao').value = solucao;
+
+            const currentAnexoInfo = document.getElementById('current-anexo-info');
+            const currentAnexoLink = document.getElementById('current-anexo-link');
+            if (anexoPath) {
+                currentAnexoLink.href = "{{ url_for('uploaded_file', filename='') }}" + anexoPath;
+                currentAnexoLink.textContent = anexoPath;
+                currentAnexoInfo.style.display = 'block';
+            } else {
+                currentAnexoInfo.style.display = 'none';
+            }
+            document.getElementById('edit-anexo').value = ''; 
+        });
+
+        // Popula modal visualizar
+        const viewModal = document.getElementById('viewModal');
+        viewModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            const anexoPath = button.getAttribute('data-anexo-path'); 
+
+            document.getElementById('view-id').textContent = button.getAttribute('data-id');
+            document.getElementById('view-erro').textContent = button.getAttribute('data-erro');
+            document.getElementById('view-servico').textContent = button.getAttribute('data-servico');
+            document.getElementById('view-solucao').textContent = button.getAttribute('data-solucao');
+            document.getElementById('view-criado-por').textContent = button.getAttribute('data-criado-por').split('@')[0];
+
+            const viewAnexoStatus = document.getElementById('view-anexo-status');
+            const viewAnexoLink = document.getElementById('view-anexo-link');
+            const viewAnexoImg = document.getElementById('view-anexo-img');
+            
+            if (anexoPath) {
+                const anexoUrl = "{{ url_for('uploaded_file', filename='') }}" + anexoPath;
+                viewAnexoStatus.style.display = 'none'; 
+                viewAnexoLink.href = anexoUrl;
+                viewAnexoLink.style.display = 'inline'; 
+                viewAnexoImg.src = anexoUrl;
+                viewAnexoImg.style.display = 'block'; 
+            } else {
+                viewAnexoStatus.style.display = 'inline'; 
+                viewAnexoLink.style.display = 'none';
+                viewAnexoImg.style.display = 'none';
+                viewAnexoImg.src = '#'; 
+            }
+        });
+
+        // Popula modal deletar
+        const deleteModal = document.getElementById('deleteModal');
+        deleteModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            document.getElementById('delete-id').value = button.getAttribute('data-id');
+        });
+
+        // Pesquisa dinâmica na tabela
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const filter = this.value.toLowerCase();
+            const rows = document.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(filter) ? '' : 'none';
+            });
+        });
+
+        // Script para fechar mensagens flash automaticamente
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    const bootstrapAlert = bootstrap.Alert.getInstance(alert);
+                    if (bootstrapAlert) {
+                        bootstrapAlert.close();
+                    } else {
+                        const newAlert = new bootstrap.Alert(alert);
+                        newAlert.close();
+                    }
+                }, 3000); 
+            });
+        });
+    </script>
+</body>
+</html>
