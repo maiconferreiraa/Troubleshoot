@@ -36,12 +36,13 @@
             flex-shrink: 0; 
         }
 
+            /* --- CSS CORRIGIDO --- */
         .navbar-brand {
-             color: var(--yellow-500) !important; 
-             font-weight: bold;
-             font-size: 1.5rem;
-             display: flex;
-             align-items: center;
+        /* color: var(--yellow-500) !important;  <-- LINHA REMOVIDA */
+        font-weight: bold;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
         }
         
         .navbar-logo {
@@ -128,7 +129,7 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark mb-4">
         <div class="container">
-            <a class="navbar-brand" href="#">
+            <a class="navbar-brand text-white" href="#">
                 <img src="{{ url_for('static', filename='images/logo.png') }}" class="navbar-logo" alt="Logo VMIS">
                 VMIS Troubleshoot
             </a>
