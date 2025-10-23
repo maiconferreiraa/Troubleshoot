@@ -111,7 +111,6 @@
     <div class="login-container">
         
         <div class="login-header">
-             <!-- Certifique-se de ter uma imagem 'logo.png' em static/images/ -->
              <img src="{{ url_for('static', filename='images/logo.png') }}" class="logo" alt="Logo">
             <h4>Crie sua Conta</h4> <p class="small" style="color: var(--text-secondary);">Cadastre-se para acessar o Dashboard.</p>
         </div>
@@ -133,7 +132,7 @@
                 <input type="email" class="form-control" id="email" name="email" placeholder="seu.email@vmis.com.br" required>
             </div>
             <div class="mb-3">
-                <label for="password" class="form-label">Senha</label>
+                <label for="password" class="form-label">Senha (mín. 6 caracteres)</label>
                 <input type="password" class="form-control" id="password" name="password" required minlength="6">
             </div>
             <div class="mb-3">
@@ -165,7 +164,9 @@
             const alerts = document.querySelectorAll('.alert.show');
             alerts.forEach(function(alert) {
                 setTimeout(function() {
-                    new bootstrap.Alert(alert).close();
+                    // Usa a nova API do Bootstrap 5 para fechar o alerta
+                    const bootstrapAlert = bootstrap.Alert.getOrCreateInstance(alert);
+                    bootstrapAlert.close();
                 }, 3000); // 3 segundos
             });
 

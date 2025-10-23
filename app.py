@@ -2,18 +2,19 @@ import os
 import csv
 import secrets
 import time
-import traceback # Importação adicionada para logs de erro mais detalhados
+import traceback
 from io import StringIO, BytesIO
 from fpdf import FPDF
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import logging
-import re # Importação necessária para a função clean_text aprimorada
+import re
 import psycopg2 
 from psycopg2 import sql 
 from psycopg2 import extras 
 from psycopg2 import errors as pg_errors 
+import pandas as pd  # Importação para ler o .xlsx
 
 # --- Configuração da Aplicação ---
 #DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -34,6 +35,42 @@ handler.setLevel(logging.INFO)
 app.logger.addHandler(handler)
 app.logger.setLevel(logging.INFO)
 
+# --- FUNÇÃO PARA CARREGAR E-MAILS AUTORIZADOS ---
+def load_authorized_emails():
+    """Carrega emails autorizados do users.xlsx na inicialização."""
+    filepath = os.path.join(app.root_path, "users.xlsx")
+    app.logger.info(f"Tentando carregar lista de e-mails de {filepath}...")
+    
+    if not os.path.exists(filepath):
+        app.logger.warning(f"AVISO: Arquivo 'users.xlsx' não encontrado na raiz. Nenhum e-mail será autorizado para cadastro.")
+        return set()
+        
+    try:
+        # Lê o Excel, assumindo que a primeira linha é o cabeçalho
+        df = pd.read_excel(filepath) 
+        
+        # Verifica se a coluna "User principal name" (Coluna C) existe
+        if "User principal name" not in df.columns:
+            app.logger.error(f"Erro: Coluna 'User principal name' não encontrada em {filepath}. Verifique o nome da coluna.")
+            return set()
+            
+        # Pega a coluna, remove valores nulos (NaN), converte para string, e depois minúsculo
+        email_list = df["User principal name"].dropna().astype(str).str.lower()
+        
+        # Filtra apenas os e-mails do domínio correto
+        vmis_emails = {email for email in email_list if email.endswith(app.config["ALLOWED_DOMAIN"])}
+        
+        app.logger.info(f"✅ {len(vmis_emails)} e-mails autorizados ({app.config['ALLOWED_DOMAIN']}) carregados com sucesso.")
+        return vmis_emails
+        
+    except Exception as e:
+        app.logger.error(f"❌ FALHA CRÍTICA ao ler 'users.xlsx': {e}")
+        return set()
+
+# CARREGA OS E-MAILS NA INICIALIZAÇÃO DO APP
+AUTHORIZED_EMAIL_SET = load_authorized_emails()
+# ---------------------------------------------------
+
 SERVICOS = [
     "IMAGESERVICE", "DETECTORAPI", "CALIBRATIONAPI", "FILEMANAGERAPI",
     "MCBCOMMUNICATIONAPI", "DETECTORCOMMUNICATION", "USERAPI", "SETTINGSAPI",
@@ -43,39 +80,24 @@ SERVICOS = [
 
 # --- FUNÇÃO AUXILIAR DE TEXTO PARA PDF (APRIMORADA) ---
 def clean_text(text):
-    """
-    Remove caracteres não-ASCII e formatação HTML que causam erros de 
-    codificação ou de largura (Not enough horizontal space) no FPDF.
-    Usa 'latin-1' com substituição para máxima compatibilidade.
-    """
     if not isinstance(text, str):
         text = str(text)
-    
-    # Remove HTML tags simples (e.g., <br>)
     text = re.sub('<[^<]+?>', '', text)
-    
-    # Substitui caracteres especiais por equivalentes simples (ignora case)
     text = text.replace('ç', 'c').replace('Ç', 'C')
     text = re.sub(r'[áàãâä]', 'a', text, flags=re.IGNORECASE)
     text = re.sub(r'[éèêë]', 'e', text, flags=re.IGNORECASE)
     text = re.sub(r'[íìîï]', 'i', text, flags=re.IGNORECASE)
     text = re.sub(r'[óòõôö]', 'o', text, flags=re.IGNORECASE)
     text = re.sub(r'[úùûü]', 'u', text, flags=re.IGNORECASE)
-    
-    # Remove ou substitui outros caracteres problemáticos
     text = text.replace('º', '').replace('ª', '')
-    text = text.replace('—', '-').replace('–', '-') # Tratamento para travessões
-    
-    # Garante que seja ASCII compatível com FPDF latin-1
+    text = text.replace('—', '-').replace('–', '-')
     return text.encode('latin-1', 'replace').decode('latin-1')
 
-# --- Banco de Dados: Funções e Context Manager (POSTGRESQL) ---
-# (Funções de DB omitidas por brevidade, pois não foram alteradas)
+# --- Banco de Dados: Funções (sem alterações) ---
 def get_db_connection():
     if not app.config["DATABASE_URL"]:
         app.logger.error("ERRO CRÍTICO: Variável DATABASE_URL não foi encontrada. Conexão PostgreSQL falhou.")
         raise Exception("DATABASE_URL ausente.")
-    
     try:
         conn = psycopg2.connect(app.config["DATABASE_URL"])
         conn.cursor_factory = psycopg2.extras.DictCursor 
@@ -130,7 +152,6 @@ def init_db():
         app.logger.info("✅ SUCESSO: Banco de dados PostgreSQL inicializado e tabelas verificadas/criadas.")
     except Exception as e:
         app.logger.error(f"❌ FALHA: A inicialização do DB foi interrompida. Erro: {e}")
-        # Passar aqui é crucial para não travar o aplicativo se o DB falhar na inicialização
         pass 
 
 def check_duplicate_erro(erro, servico, solucao):
@@ -208,7 +229,7 @@ def insert_user(email, password_hash):
             conn.commit()
             return True
     except pg_errors.UniqueViolation:
-        return False
+        return False # E-mail já existe
     except Exception as e:
         app.logger.error(f"Erro ao inserir usuário: {e}")
         return False
@@ -287,30 +308,53 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# --- ROTA DE REGISTRO MODIFICADA ---
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        email = request.form.get('email')
+        email = request.form.get('email', '').strip().lower()
         password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password') # <-- CAMPO ADICIONADO
 
-        if not email or not password:
-            flash('Por favor, preencha o e-mail e a senha.', 'danger')
+        # Verificação 1: Campos preenchidos
+        if not email or not password or not confirm_password:
+            flash('Por favor, preencha todos os campos.', 'danger')
             return render_template('register.html')
         
+        # Verificação 2: Senhas coincidem
+        if password != confirm_password:
+            flash('As senhas não coincidem.', 'danger')
+            return render_template('register.html')
+
+        # Verificação 3: Comprimento da senha (boa prática)
+        if len(password) < 6:
+            flash('A senha deve ter pelo menos 6 caracteres.', 'danger')
+            return render_template('register.html')
+
+        # Verificação 4: Domínio
         if not is_valid_email(email):
             flash(f"O e-mail deve pertencer ao domínio {app.config['ALLOWED_DOMAIN']}.", 'danger')
             return render_template('register.html')
-
+            
+        # Verificação 5: E-mail autorizado no .xlsx (Nova regra)
+        if email not in AUTHORIZED_EMAIL_SET:
+            app.logger.warning(f"Tentativa de cadastro falhou: E-mail '{email}' não está na lista de autorizados (users.xlsx).")
+            flash('❌ E-mail não autorizado para cadastro.', 'danger')
+            return render_template('register.html')
+            
+        # Verificação 6: E-mail já existe no banco de dados
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
         
         if insert_user(email, hashed_password):
+            app.logger.info(f"Novo usuário cadastrado: {email}")
             flash('✅ Cadastro realizado com sucesso! Faça seu login.', 'success')
             return redirect(url_for('login')) 
         else:
-            flash('❌ Este e-mail já está cadastrado. Tente outro ou faça login.', 'danger')
+            flash('❌ Este e-mail já está cadastrado no sistema. Tente outro ou faça login.', 'danger')
             return render_template('register.html')
     
     return render_template('register.html')
+# ------------------------------------
 
 @app.route("/", methods=["GET", "POST"])
 def login():
@@ -319,7 +363,7 @@ def login():
         return redirect(url_for("dashboard"))
 
     if request.method == "POST":
-        email = request.form.get("email")
+        email = request.form.get("email").strip().lower()
         password = request.form.get("password") 
 
         if not email or not password:
@@ -344,6 +388,7 @@ def login():
             
     return render_template("login.html")
 
+# ... (O restante do seu app.py continua aqui, sem alterações) ...
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
     if request.method == "POST":
@@ -467,30 +512,25 @@ def dashboard():
                 flash("Erro ao atualizar ou ID inválido.", "danger")
                 
         elif action == "apagar":
-            # 1. Checar permissão de administrador ANTES de tentar qualquer coisa.
             if not is_admin:
                 flash("🚫 Permissão negada. Apenas administradores podem apagar erros.", "danger")
-                return redirect(url_for("dashboard")) # CRÍTICO: Redireciona e para a execução aqui.
+                return redirect(url_for("dashboard"))
             
-            # Se for admin, tenta processar a exclusão.
             id_str = request.form.get("id")
             id_to_delete = None
             try:
                 id_to_delete = int(id_str)
             except (ValueError, TypeError):
-                # Se o ID não for um número válido, flasheia e redireciona.
                 flash("❌ ID de erro inválido para exclusão.", "danger")
                 return redirect(url_for("dashboard"))
             
-            # Se o ID for válido, tenta deletar.
             if id_to_delete is not None:
                 if delete_erro(id_to_delete):
                     flash("✅ Erro apagado com sucesso!", "success")
                 else:
                     flash("❌ Erro ao apagar. O ID pode não existir ou houve um problema no banco de dados.", "danger")
-            # Caso o id_to_delete seja None (já tratado acima, mas para clareza)
             else:
-                 flash("❌ ID de erro inválido para exclusão.", "danger") # Mensagem redundante, mas segura.
+                 flash("❌ ID de erro inválido para exclusão.", "danger")
         
         return redirect(url_for("dashboard"))
 
@@ -521,75 +561,52 @@ def export_csv():
 @app.route("/export/pdf")
 @login_required
 def export_pdf():
-    """
-    Exporta todos os erros para um arquivo PDF usando FPDF.
-    A estrutura de células foi corrigida para garantir o espaço horizontal.
-    """
     erros = fetch_all_erros()
-    
     try:
         pdf = FPDF()
-        # Constante de altura de linha. 6mm é um bom espaçamento.
         LINE_HEIGHT = 6
-        LABEL_WIDTH = 20 # Largura fixa para rótulos (e.g., "Erro:", "Solução:")
-        
-        pdf.set_auto_page_break(auto=True, margin=15) # Margem de 15mm
+        LABEL_WIDTH = 20
+        pdf.set_auto_page_break(auto=True, margin=15)
         pdf.add_page()
-        
-        # Título do Relatório
         pdf.set_font("Arial", "B", 18) 
         pdf.cell(0, 10, clean_text("Relatório de Erros Cadastrados"), ln=True, align="C")
         pdf.set_font("Arial", "", 10)
         pdf.cell(0, 5, clean_text(f"Gerado por: {session.get('user', 'Desconhecido')}"), ln=True, align="C")
         pdf.ln(5)
         
-        # Loop principal de geração dos erros
         for r in erros:
-            # Garante que sempre haja espaço para o bloco (3 linhas + espaço)
             if pdf.get_y() > 270: 
                 pdf.add_page()
             
-            # 1. Cabeçalho do Erro: ID + Serviço + Criador
             pdf.set_fill_color(240, 240, 240)
-            pdf.set_text_color(0, 0, 0) # Texto preto para contraste no cabeçalho
+            pdf.set_text_color(0, 0, 0)
             pdf.set_font('Arial', 'B', 11)
-            # Imprime o cabeçalho do erro em uma linha preenchida
             pdf.cell(0, LINE_HEIGHT, 
                      clean_text(f"ID: {r['id']} | Serviço: {r['servico']} | Criado por: {r['criado_por'].split('@')[0]}"), 
-                     1, 1, 'L', True) # 1: border, 1: next line, L: align, True: fill
+                     1, 1, 'L', True)
             
-            pdf.set_text_color(0, 0, 0) # Volta ao texto padrão (preto)
-            pdf.set_font('Arial', '', 10) # Fonte padrão para o corpo
+            pdf.set_text_color(0, 0, 0)
+            pdf.set_font('Arial', '', 10)
             pdf.ln(1)
             
-            # 2. Descrição do Erro (Multi-line)
-            # Rótulo em negrito
             pdf.set_font('Arial', 'B', 10)
-            pdf.set_x(pdf.l_margin) # Volta para a margem esquerda (CRÍTICO)
+            pdf.set_x(pdf.l_margin)
             pdf.cell(LABEL_WIDTH, LINE_HEIGHT, "Erro:", 0, 0, 'L')
-            
-            # Conteúdo (w=0 usa o espaço restante da linha)
             pdf.set_font('Arial', '', 10)
-            pdf.multi_cell(0, LINE_HEIGHT, clean_text(r['erro']), 0, 'L') # multi_cell(0, ...) garante quebra de linha
+            pdf.multi_cell(0, LINE_HEIGHT, clean_text(r['erro']), 0, 'L')
 
-            # 3. Solução (Multi-line)
-            # Rótulo em negrito
             pdf.set_font('Arial', 'B', 10)
-            pdf.set_x(pdf.l_margin) # Volta para a margem esquerda (CRÍTICO)
+            pdf.set_x(pdf.l_margin)
             pdf.cell(LABEL_WIDTH, LINE_HEIGHT, "Solução:", 0, 0, 'L')
             
-            # Conteúdo (w=0 usa o espaço restante da linha)
             pdf.set_font('Arial', '', 10)
             pdf.multi_cell(0, LINE_HEIGHT, clean_text(r['solucao']), 0, 'L')
 
-            # 4. Separador
             pdf.ln(1)
             pdf.set_draw_color(150, 150, 150)
-            # Desenha uma linha de ponta a ponta
             pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
-            pdf.ln(2) # Espaço após o separador
+            pdf.ln(2)
 
-        # O método pdf.output(dest='S') retorna o conteúdo em bytes.
         pdf_output = pdf.output(dest='S')
         
         return send_file(
