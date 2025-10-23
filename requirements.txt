@@ -6,3 +6,5 @@ psycopg2-binary
 gunicorn
 fpdf2
 werkzeug
+pandas
+openpyxl

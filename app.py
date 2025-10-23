@@ -17,8 +17,8 @@ from psycopg2 import errors as pg_errors
 import pandas as pd  # Importação para ler o .xlsx
 
 # --- Configuração da Aplicação ---
-#DATABASE_URL = os.environ.get("DATABASE_URL")
-DATABASE_URL = "postgresql://vmis_db_user:8TDeUr6zcACsxeRbpKj0dO5ttJW9tDCk@dpg-d3fa0n6uk2gs73dcqv9g-a.oregon-postgres.render.com/vmis_db"
+DATABASE_URL = os.environ.get("DATABASE_URL")
+#DATABASE_URL = "postgresql://vmis_db_user:8TDeUr6zcACsxeRbpKj0dO5ttJW9tDCk@dpg-d3fa0n6uk2gs73dcqv9g-a.oregon-postgres.render.com/vmis_db"
 ALLOWED_DOMAIN = "@vmis.com.br"
 ADMIN_EMAIL = "maicon.ferreira@vmis.com.br"
 SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "chave_fallback_insegura_nao_usar")
